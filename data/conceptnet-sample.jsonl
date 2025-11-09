@@ -1,0 +1,10 @@
+{"start": {"label": "squat"}, "end": {"label": "exercise"}, "rel": {"label": "IsA"}, "surfaceText": "A squat is an exercise."}
+{"start": {"label": "push up"}, "end": {"label": "exercise"}, "rel": {"label": "IsA"}, "surfaceText": "A push up is an exercise."}
+{"start": {"label": "leg press"}, "end": {"label": "exercise"}, "rel": {"label": "IsA"}, "surfaceText": "Leg press is an exercise."}
+{"start": {"label": "squat"}, "end": {"label": "quadriceps"}, "rel": {"label": "Uses"}, "surfaceText": "Squat uses quadriceps."}
+{"start": {"label": "squat"}, "end": {"label": "glutes"}, "rel": {"label": "Uses"}, "surfaceText": "Squat uses glutes."}
+{"start": {"label": "box squat"}, "end": {"label": "squat"}, "rel": {"label": "RelatedTo"}, "surfaceText": "Box squat is related to squat."}
+{"start": {"label": "leg press"}, "end": {"label": "squat"}, "rel": {"label": "SubstituteFor"}, "surfaceText": "Leg press can substitute for squat."}
+{"start": {"label": "jump rope"}, "end": {"label": "cardio"}, "rel": {"label": "IsA"}, "surfaceText": "Jump rope is a cardio exercise."}
+{"start": {"label": "glute bridge"}, "end": {"label": "glutes"}, "rel": {"label": "Uses"}, "surfaceText": "Glute bridge uses glutes."}
+{"start": {"label": "squat"}, "end": {"label": "knee injury"}, "rel": {"label": "ContraindicatedFor"}, "surfaceText": "Squat may be contraindicated for knee injury."}
