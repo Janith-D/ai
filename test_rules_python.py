@@ -28,39 +28,39 @@ class WorkoutRulesTester:
             
             if expected_result == "fail":
                 if len(results) == 0:
-                    print(f"  ✓ PASS: Query failed as expected")
+                    print(f"  [PASS] Query failed as expected")
                     self.tests_passed += 1
                 else:
-                    print(f"  ✗ FAIL: Query succeeded but should have failed")
+                    print(f"  [FAIL] Query succeeded but should have failed")
                     print(f"     Results: {results}")
                     self.tests_failed += 1
             elif expected_result == "success":
                 if len(results) > 0:
-                    print(f"  ✓ PASS: Query succeeded as expected")
+                    print(f"  [PASS] Query succeeded as expected")
                     print(f"     Results: {results}")
                     self.tests_passed += 1
                 else:
-                    print(f"  ✗ FAIL: Query failed but should have succeeded")
+                    print(f"  [FAIL] Query failed but should have succeeded")
                     self.tests_failed += 1
             else:
                 # Check specific result value
                 if len(results) > 0:
                     actual = results[0]
                     if str(actual) == str(expected_result):
-                        print(f"  ✓ PASS: Got expected result")
+                        print(f"  [PASS] Got expected result")
                         print(f"     Result: {actual}")
                         self.tests_passed += 1
                     else:
-                        print(f"  ✗ FAIL: Wrong result")
+                        print(f"  [FAIL] Wrong result")
                         print(f"     Expected: {expected_result}")
                         print(f"     Got: {actual}")
                         self.tests_failed += 1
                 else:
-                    print(f"  ✗ FAIL: No results returned")
+                    print(f"  [FAIL] No results returned")
                     self.tests_failed += 1
                     
         except Exception as e:
-            print(f"  ✗ ERROR: {str(e)}")
+            print(f"  [ERROR] {str(e)}")
             self.tests_failed += 1
     
     def run_all_tests(self):
@@ -181,8 +181,8 @@ class WorkoutRulesTester:
         total = self.tests_passed + self.tests_failed
         pass_rate = (self.tests_passed / total * 100) if total > 0 else 0
         print(f"Total Tests: {total}")
-        print(f"Passed:      {self.tests_passed} ✓")
-        print(f"Failed:      {self.tests_failed} ✗")
+        print(f"Passed:      {self.tests_passed}")
+        print(f"Failed:      {self.tests_failed}")
         print(f"Pass Rate:   {pass_rate:.1f}%")
         
         return self.tests_failed == 0

@@ -1,3 +1,16 @@
+# Core dependencies
 pandas
 tqdm
 orjson
+
+# Python-Prolog integration
+pyswip>=0.3.3
+
+# Optional: Web API framework (uncomment if needed)
+# fastapi>=0.104.0
+# uvicorn>=0.24.0
+
+# Optional: NLU/ML components (for future expansion)
+# spacy>=3.7.0
+# sentence-transformers>=2.2.0
+# scikit-learn>=1.3.0

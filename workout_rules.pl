@@ -18,6 +18,7 @@
     injury_affects_muscle/2,
     workout_avoids_injury/2,
     time_intensity_compatible/3,
+    has_muscle_overlap/2,
     day_name/2,
     days_between/3
 ]).
@@ -68,28 +69,36 @@ is_lower_body(WorkoutID) :-
 
 % respects_split_pattern(+Schedule, -Pattern)
 % Validates that schedule alternates upper/lower or returns pattern type
-respects_split_pattern([], balanced).
+% Returns 'balanced' if all consecutive exercise pairs alternate upper/lower
+% Returns 'imbalanced' if any pair has same muscle group
 
+% Base cases - empty or single exercise is balanced
+respects_split_pattern([], balanced) :- !.
+respects_split_pattern([_], balanced) :- !.
+
+% Skip rest days at start
 respects_split_pattern([day(_, rest)|T], Pattern) :-
     !, respects_split_pattern(T, Pattern).
 
-respects_split_pattern([day(_, W1)], _) :-
-    W1 \= rest, !.
-
+% Skip rest days between exercises
 respects_split_pattern([day(_, W1), day(_, rest)|T], Pattern) :-
-    !, respects_split_pattern([day(_, W1)|T], Pattern).
+    W1 \= rest, !,
+    respects_split_pattern([day(_, W1)|T], Pattern).
 
+% Check if two consecutive exercises are same muscle group (imbalanced)
+respects_split_pattern([day(_, W1), day(_, W2)|T], imbalanced) :-
+    W1 \= rest, W2 \= rest,
+    ( (is_upper_body(W1), is_upper_body(W2))
+    ; (is_lower_body(W1), is_lower_body(W2))
+    ), !.
+
+% Check if two consecutive exercises alternate (continue checking rest)
 respects_split_pattern([day(_, W1), day(_, W2)|T], Pattern) :-
     W1 \= rest, W2 \= rest,
-    (   (is_upper_body(W1), is_lower_body(W2)) -> 
-        (Pattern = alternating, !)
-    ;   (is_lower_body(W1), is_upper_body(W2)) ->
-        (Pattern = alternating, !)
-    ;   (is_upper_body(W1), is_upper_body(W2)) ->
-        (Pattern = same_group, !)
-    ;   (is_lower_body(W1), is_lower_body(W2)) ->
-        (Pattern = same_group, !)
-    ).
+    ( (is_upper_body(W1), is_lower_body(W2))
+    ; (is_lower_body(W1), is_upper_body(W2))
+    ), !,
+    respects_split_pattern([day(_, W2)|T], Pattern).
 
 % ============================================================================
 % Rule 3: Recovery Based on Sleep
@@ -132,20 +141,34 @@ schedule_has_enough_recovery(Schedule, RequiredDays) :-
 
 % safe_for_user(+WorkoutID, +UserID)
 % Checks if workout is safe given user's injuries
+safe_for_user(_WorkoutID, UserID) :-
+    % First check: If user has no injuries, any workout is safe
+    \+ user_profile(UserID, injury(_)),
+    !.  % Cut to prevent backtracking
+
+% If user has injuries, check muscle overlap
 safe_for_user(WorkoutID, UserID) :-
+    user_profile(UserID, injury(_)),  % User must have injuries for this clause
+    !,  % Cut after checking user has injuries
     % Get all muscles used by this workout
     findall(Muscle, fact(WorkoutID, uses_muscle, Muscle), UsedMuscles),
+    % Ensure workout uses some muscles (otherwise fail safe)
+    UsedMuscles \= [],
     % Get user's injured areas
     findall(InjuryMuscle, (
         user_profile(UserID, injury(Condition)),
         injury_affects_muscle(Condition, InjuryMuscle)
     ), InjuredMuscles),
-    % Check no overlap
-    \+ (member(M, UsedMuscles), member(M, InjuredMuscles)).
+    % Ensure we found injured muscles
+    InjuredMuscles \= [],
+    % Workout is safe only if there's NO overlap
+    \+ has_muscle_overlap(UsedMuscles, InjuredMuscles).
 
-% safe_for_user succeeds if user has no injuries
-safe_for_user(_, UserID) :-
-    \+ user_profile(UserID, injury(_)).
+% Helper predicate to check muscle overlap
+has_muscle_overlap(UsedMuscles, InjuredMuscles) :-
+    member(M, UsedMuscles),
+    member(M, InjuredMuscles),
+    !.  % Cut after finding first overlap
 
 % injury_affects_muscle(+Condition, -Muscle)
 % Maps injury conditions to affected muscle groups
