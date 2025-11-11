@@ -14,10 +14,11 @@ Usage:
 from typing import Dict, List, Optional
 from datetime import datetime
 import numpy as np
+import pandas as pd
+import os
 
-# Note: Will import actual ML model once trained
-# from ml.models.baseline_model import BaselineModel
-
+# Import actual ML model
+from ml.models.baseline_model import BaselineModel
 from ml.integration.ml_prolog_bridge import MLPrologBridge
 
 
@@ -30,26 +31,42 @@ class PredictionService:
         self, 
         model_path: Optional[str] = None,
         rules_file: str = "workout_rules.pl",
-        test_facts: str = "tests/test_facts.pl"
+        test_facts: str = "tests/test_facts.pl",
+        use_real_model: bool = True
     ):
         """
         Initialize prediction service
         
         Args:
-            model_path: Path to trained ML model (None = use mock predictions)
+            model_path: Path to trained ML model directory (None = use latest)
             rules_file: Path to Prolog rules
             test_facts: Path to test facts
+            use_real_model: Use trained model (True) or mock (False)
         """
         self.ml_model = None
         self.bridge = MLPrologBridge(rules_file, test_facts)
-        self.use_mock_ml = model_path is None
+        self.use_mock_ml = not use_real_model
         
-        if model_path:
-            # TODO: Load trained model
-            # self.ml_model = joblib.load(model_path)
-            print(f"✅ ML model loaded: {model_path}")
+        if use_real_model:
+            try:
+                # Load trained model
+                if model_path is None:
+                    model_path = 'ml/models/saved_models/latest'
+                
+                if os.path.exists(model_path):
+                    self.ml_model = BaselineModel.load(model_path)
+                    self.use_mock_ml = False
+                    print(f"✅ ML model loaded from: {model_path}")
+                else:
+                    print(f"⚠️  Model not found at: {model_path}")
+                    print("   Falling back to mock predictions")
+                    self.use_mock_ml = True
+            except Exception as e:
+                print(f"⚠️  Error loading model: {e}")
+                print("   Falling back to mock predictions")
+                self.use_mock_ml = True
         else:
-            print("⚠️  Using mock ML predictions (model not trained yet)")
+            print("⚠️  Using mock ML predictions (use_real_model=False)")
     
     def predict(
         self,
@@ -143,17 +160,66 @@ class PredictionService:
         Returns:
             (predicted_workout, confidence)
         """
-        if self.use_mock_ml:
+        if self.use_mock_ml or self.ml_model is None:
             # Mock ML predictions based on simple rules
             return self._mock_ml_prediction(user_profile, workout_history)
         
-        # TODO: Use actual trained ML model
-        # features = self._prepare_features(user_profile, workout_history)
-        # prediction = self.ml_model.predict(features)
-        # confidence = self.ml_model.predict_proba(features).max()
-        # return prediction[0], confidence
+        # Use actual trained ML model
+        features = self._prepare_features(user_profile, workout_history)
+        prediction, confidence = self.ml_model.predict_workout(features)
         
-        return self._mock_ml_prediction(user_profile, workout_history)
+        return prediction, confidence
+    
+    def _prepare_features(
+        self,
+        user_profile: Dict,
+        workout_history: List[Dict]
+    ) -> Dict:
+        """
+        Prepare features from user profile and history for ML model
+        
+        Args:
+            user_profile: User data (goal, fatigue, sleep, etc.)
+            workout_history: Recent workout logs
+        
+        Returns:
+            Feature dictionary matching model's expected format
+        """
+        # Get last workout info
+        if workout_history:
+            last_workout = workout_history[-1]
+            muscle_group = last_workout.get('muscle_group', 'rest')
+            intensity = last_workout.get('intensity', 'none')
+            duration_min = last_workout.get('duration_min', 0)
+            calories = last_workout.get('calories', 0)
+            result_score = last_workout.get('result_score', 0.75)
+            
+            # Calculate days since last workout
+            days_since = 1
+            if len(workout_history) >= 2:
+                days_since = 1  # Simplified - in real app, calculate from dates
+        else:
+            # No history - use defaults
+            muscle_group = 'rest'
+            intensity = 'none'
+            duration_min = 0
+            calories = 0
+            result_score = 0.75
+            days_since = 1
+        
+        # Build feature dict
+        features = {
+            'muscle_group': muscle_group,
+            'intensity': intensity,
+            'fatigue_level': user_profile.get('fatigue_level', 'medium'),
+            'duration_min': duration_min,
+            'calories': calories,
+            'sleep_hours': user_profile.get('sleep_hours', 7.0),
+            'result_score': result_score,
+            'days_since_last_workout': days_since
+        }
+        
+        return features
     
     def _mock_ml_prediction(
         self, 

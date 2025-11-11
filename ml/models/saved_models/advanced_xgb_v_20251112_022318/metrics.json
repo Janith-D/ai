@@ -1,0 +1,9 @@
+{
+  "train_accuracy": 0.9852777777777778,
+  "test_accuracy": 0.7652777777777777,
+  "cv_mean": 0.7749444444444444,
+  "cv_std": 0.005335647646019093,
+  "overfitting_gap": 0.22000000000000008,
+  "feature_count": 34,
+  "used_smote": true
+}

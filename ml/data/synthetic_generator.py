@@ -356,9 +356,10 @@ def main():
     """Generate default dataset for training"""
     generator = SyntheticDataGenerator(seed=42)
     
+    # Expanded dataset: 150 users × 120 days = 18,000 samples
     users_df, logs_df = generator.generate_dataset(
-        n_users=100,
-        days_per_user=90,
+        n_users=150,
+        days_per_user=120,
         output_file='ml/data/fitness_dataset.csv'
     )
     
