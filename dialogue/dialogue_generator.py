@@ -73,7 +73,7 @@ class DialogueGenerator:
             if api_key:
                 try:
                     genai.configure(api_key=api_key)
-                    self.model = genai.GenerativeModel('gemini-pro')
+                    self.model = genai.GenerativeModel('gemini-2.5-flash')
                     print("✓ Gemini API initialized successfully")
                 except Exception as e:
                     print(f"⚠️ Gemini API initialization failed: {e}")
@@ -147,7 +147,16 @@ class DialogueGenerator:
         
         full_prompt = f"{system_prompt}\n\n{user_prompt}"
         
-        # Generate
+        # Generate with relaxed safety settings for fitness content
+        from google.generativeai.types import HarmCategory, HarmBlockThreshold
+        
+        safety_settings = {
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE
+        }
+        
         response = self.model.generate_content(
             full_prompt,
             generation_config=genai.GenerationConfig(
@@ -155,11 +164,14 @@ class DialogueGenerator:
                 temperature=0.8,
                 top_p=0.9,
                 top_k=40
-            )
+            ),
+            safety_settings=safety_settings
         )
         
-        if response and response.text:
+        if response and hasattr(response, 'text') and response.text:
             return response.text.strip()
+        elif response and hasattr(response, 'parts') and response.parts:
+            return ''.join(part.text for part in response.parts).strip()
         
         return None
     
