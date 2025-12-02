@@ -275,29 +275,41 @@ class CentralController:
             # Run NLP analysis
             result = self.nlp.analyze(user_message)
             
-            # Handle both dict and nested result formats
+            # Parse NLP output - it returns {'emotion': {...}, 'intent': {...}, 'context': {...}}
+            analysis = {'text': user_message}  # Store original message
             if isinstance(result, dict):
-                if 'emotion' in result:
-                    analysis = result
-                elif 'emotion_analysis' in result:
-                    analysis = {
-                        'emotion': result['emotion_analysis'].get('emotion'),
-                        'intent': result.get('intent_classification', {}).get('intent'),
-                        'extracted_context': result.get('context_extraction', {})
-                    }
+                # Extract emotion data
+                emotion_data = result.get('emotion', {})
+                if isinstance(emotion_data, dict):
+                    analysis['emotion'] = emotion_data.get('fitness_emotion', 'neutral')
+                    analysis['emotion_confidence'] = emotion_data.get('confidence', 0.5)
+                    analysis['energy_level'] = emotion_data.get('energy_level', 60)
                 else:
-                    analysis = result
-            else:
-                analysis = {}
-            
-            # Enhance with energy estimation
-            emotion = analysis.get('emotion', 'neutral')
-            energy_map = {
-                'tired': 20, 'exhausted': 10, 'demotivated': 40,
-                'frustrated': 50, 'anxious': 45, 'motivated': 80,
-                'excited': 90, 'neutral': 60
-            }
-            analysis['energy_level'] = energy_map.get(emotion, 60)
+                    analysis['emotion'] = str(emotion_data) if emotion_data else 'neutral'
+                    analysis['emotion_confidence'] = 0.5
+                
+                # Extract intent data
+                intent_data = result.get('intent', {})
+                if isinstance(intent_data, dict):
+                    analysis['intent'] = intent_data.get('intent', 'unknown')
+                    analysis['intent_confidence'] = intent_data.get('confidence', 0.5)
+                else:
+                    analysis['intent'] = str(intent_data) if intent_data else 'unknown'
+                    analysis['intent_confidence'] = 0.5
+                
+                # Extract context data
+                context_data = result.get('context', {})
+                analysis['extracted_context'] = context_data if isinstance(context_data, dict) else {}
+                
+                # Add energy level if not already set
+                if 'energy_level' not in analysis:
+                    emotion = analysis.get('emotion', 'neutral')
+                    energy_map = {
+                        'tired': 20, 'exhausted': 10, 'demotivated': 40,
+                        'frustrated': 50, 'anxious': 45, 'motivated': 80,
+                        'excited': 90, 'neutral': 60
+                    }
+                    analysis['energy_level'] = energy_map.get(emotion, 60)
             
             # Detect injury
             injury_keywords = ['pain', 'hurt', 'injured', 'sore', 'ache']
@@ -424,11 +436,25 @@ class CentralController:
                     execution_time_ms=(time.time() - start) * 1000
                 )
             
-            # Get ML recommendation
-            prediction = self.ml.get_context_aware_recommendation(
-                nlp_context=nlp_data,
-                user_data=user_data or {}
+            # Get ML recommendation using predict_with_message
+            # Reconstruct user message from NLP data if needed
+            user_message = nlp_data.get('text', '')
+            
+            # Use predict_with_message method
+            prediction_result = self.ml.predict_with_message(
+                user_message=user_message,
+                user_data=user_data or {},
+                history_df=None  # No history for now
             )
+            
+            # Extract prediction data
+            prediction = {
+                'workout_type': prediction_result.get('adjusted_prediction', 'REST'),
+                'confidence': prediction_result.get('adjusted_confidence', 0.5),
+                'reason': prediction_result.get('adjustment_reason', ''),
+                'base_prediction': prediction_result.get('base_prediction'),
+                'nlp_adjusted': True
+            }
             
             return BrainOutput(
                 brain_name='ML',

@@ -177,21 +177,46 @@ class CoachPipeline:
         
         try:
             # Run full NLP pipeline
-            analysis = self.nlp.analyze(user_message)
+            result = self.nlp.analyze(user_message)
             
-            # Enhance with energy level estimation
-            emotion = analysis.get('emotion', 'neutral')
-            energy_map = {
-                'tired': 20,
-                'exhausted': 10,
-                'demotivated': 40,
-                'frustrated': 50,
-                'anxious': 45,
-                'motivated': 80,
-                'excited': 90,
-                'neutral': 60
-            }
-            analysis['energy_level'] = energy_map.get(emotion, 60)
+            # Parse NLP output - it returns {'emotion': {...}, 'intent': {...}, 'context': {...}}
+            analysis = {}
+            if isinstance(result, dict):
+                # Extract emotion data
+                emotion_data = result.get('emotion', {})
+                if isinstance(emotion_data, dict):
+                    analysis['emotion'] = emotion_data.get('fitness_emotion', 'neutral')
+                    analysis['confidence'] = emotion_data.get('confidence', 0.5)
+                    analysis['energy_level'] = emotion_data.get('energy_level', 60)
+                else:
+                    analysis['emotion'] = str(emotion_data) if emotion_data else 'neutral'
+                    analysis['confidence'] = 0.5
+                
+                # Extract intent data
+                intent_data = result.get('intent', {})
+                if isinstance(intent_data, dict):
+                    analysis['intent'] = intent_data.get('intent', 'unknown')
+                else:
+                    analysis['intent'] = str(intent_data) if intent_data else 'unknown'
+                
+                # Extract context data
+                context_data = result.get('context', {})
+                analysis['extracted_context'] = context_data if isinstance(context_data, dict) else {}
+                
+                # Add energy level if not already set
+                if 'energy_level' not in analysis:
+                    emotion = analysis.get('emotion', 'neutral')
+                    energy_map = {
+                        'tired': 20,
+                        'exhausted': 10,
+                        'demotivated': 40,
+                        'frustrated': 50,
+                        'anxious': 45,
+                        'motivated': 80,
+                        'excited': 90,
+                        'neutral': 60
+                    }
+                    analysis['energy_level'] = energy_map.get(emotion, 60)
             
             # Detect injury from context
             injury_keywords = ['pain', 'hurt', 'injured', 'sore', 'ache']
@@ -201,7 +226,9 @@ class CoachPipeline:
             return analysis
             
         except Exception as e:
+            import traceback
             print(f"⚠️ NLP analysis error: {e}")
+            # traceback.print_exc()  # Uncomment for debugging
             return None
     
     def _run_ml_prediction(
